@@ -4,6 +4,7 @@ import modules.shared as shared
 from modules.processing import process_images
 from modules.sd_models import checkpoints_list
 import modules.sd_models
+import random
 
 class ForgeIteratorScript(scripts.Script):
     def title(self):
@@ -44,7 +45,8 @@ class ForgeIteratorScript(scripts.Script):
             
             # Use a refresh button to rescan folders if models are reloaded
             with gr.Row():
-                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="")
+                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=1)
+                shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False)
                 refresh_btn = gr.Button(value="🔄", size="sm", elem_classes="tool")
                 
             quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
@@ -57,7 +59,7 @@ class ForgeIteratorScript(scripts.Script):
                 
             refresh_btn.click(fn=refresh_folders, outputs=[folder])
 
-        return [enabled, folder, quantity]
+        return [enabled, folder, quantity, shuffle_checkbox]
 
     def _get_checkpoints_in_folder(self, folder):
         matches = []
@@ -72,13 +74,19 @@ class ForgeIteratorScript(scripts.Script):
         matches.sort(key=lambda x: x.name)
         return matches
 
-    def setup(self, p, enabled, folder, quantity, **kwargs):
+    def setup(self, p, enabled, folder, quantity, shuffle, **kwargs):
         if not enabled or not folder:
             return
             
         checkpoints_to_run = self._get_checkpoints_in_folder(folder)
         if not checkpoints_to_run:
             return
+            
+        if shuffle:
+            random.shuffle(checkpoints_to_run)
+            
+        # Store to p so both setup and process agree on the exact order (especially important for shuffle)
+        p.forge_iterator_checkpoints = checkpoints_to_run
             
         # We perform n_iter inflation in setup() because it runs BEFORE Main Scripts (e.g. One Button Prompt).
         # This allows Prompt-Generating Main Scripts to correctly calculate how many dynamic prompts they need to make.
@@ -89,11 +97,11 @@ class ForgeIteratorScript(scripts.Script):
         # This makes kwargs.get('batch_number') statically 0 forever. We track it natively here.
         p.forge_iterator_current_index = 0
 
-    def process(self, p, enabled, folder, quantity, **kwargs):
+    def process(self, p, enabled, folder, quantity, shuffle, **kwargs):
         if not enabled or not folder:
             return
             
-        checkpoints_to_run = self._get_checkpoints_in_folder(folder)
+        checkpoints_to_run = getattr(p, 'forge_iterator_checkpoints', None)
         if not checkpoints_to_run:
             print(f"[Forge Iterator] No checkpoints found in folder: {folder}")
             return
@@ -101,10 +109,7 @@ class ForgeIteratorScript(scripts.Script):
         print(f"[Forge Iterator] Found {len(checkpoints_to_run)} checkpoints in {folder}. Multiplying batches.")
         
         # Save state for the batch loop
-        p.forge_iterator_checkpoints = checkpoints_to_run
         p.forge_iterator_quantity = int(quantity)
-        
-        # Set the total number of iterations has been moved to setup() so Main Scripts see it early
         
         # Disable grid generation so we only get individual files per checkpoint iteration
         p.do_not_save_grid = True
@@ -113,7 +118,7 @@ class ForgeIteratorScript(scripts.Script):
         first_ckpt = checkpoints_to_run[0]
         p.override_settings['sd_model_checkpoint'] = first_ckpt.title
 
-    def process_batch(self, p, enabled, folder, quantity, **kwargs):
+    def process_batch(self, p, enabled, folder, quantity, shuffle, **kwargs):
         if not enabled or not folder or not hasattr(p, 'forge_iterator_checkpoints'):
             return
             
