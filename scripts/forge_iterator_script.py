@@ -93,13 +93,10 @@ class ForgeIteratorScript(scripts.Script):
         # Set the total number of iterations
         p.n_iter = p.forge_iterator_quantity * len(checkpoints_to_run)
         
-        # Disable grid generation so we only get individual files per checkpoint iteration
-        p.do_not_save_grid = True
-        
-        # We need to collect generated images across batches to return them to the UI
-        # By default, without a grid, the UI might not display all images if n_iter > 1
-        p.forge_iterator_all_images = []
-        p.forge_iterator_all_infotexts = []
+        # Disable grid generation via override settings rather than internally
+        # which breaks the UI preview gallery if n_iter > 1
+        p.override_settings['grid_save'] = False
+        p.override_settings['return_grid'] = False
         
         # Set the first model in the overrides so generation starts correctly natively
         first_ckpt = checkpoints_to_run[0]
@@ -175,24 +172,3 @@ class ForgeIteratorScript(scripts.Script):
             
             # Ensure the overriding settings have the newly swapped title so Infotext saves correctly
             p.override_settings['sd_model_checkpoint'] = target_ckpt.title
-
-    def postprocess_image(self, p, pp, *args):
-        # We collect each individual image as it finishes so we can return them all to the UI at the end
-        if hasattr(p, 'forge_iterator_all_images'):
-            p.forge_iterator_all_images.append(pp.image)
-
-    def postprocess(self, p, processed, *args):
-        # By default, when do_not_save_grid is True and n_iter is large, the WebUI 
-        # sometimes fails to return the full list of generated images to the gallery preview.
-        # We force the collected images into the processed object to ensure they display.
-        if hasattr(p, 'forge_iterator_all_images') and p.forge_iterator_all_images:
-            # We replace the processed images with our accumulated list
-            # We skip this if for some reason the processed images list already has them (to avoid duplication)
-            if len(processed.images) < len(p.forge_iterator_all_images):
-                processed.images = p.forge_iterator_all_images
-                
-                # Also need to extend infotexts to match the length of images so the UI doesn't crash reading metadata
-                if len(processed.infotexts) < len(processed.images):
-                    # Pad the infotexts with the first one or empty strings
-                    padding = [processed.infotexts[0] if processed.infotexts else ""] * (len(processed.images) - len(processed.infotexts))
-                    processed.infotexts.extend(padding)
