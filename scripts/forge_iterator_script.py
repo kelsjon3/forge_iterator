@@ -101,6 +101,9 @@ class ForgeIteratorScript(scripts.Script):
         if not enabled or not folder:
             return
             
+        if getattr(shared.state, 'interrupted', False) or getattr(shared.state, 'stopping_generation', False):
+            return
+
         checkpoints_to_run = getattr(p, 'forge_iterator_checkpoints', None)
         if not checkpoints_to_run:
             print(f"[Forge Iterator] No checkpoints found in folder: {folder}")
@@ -120,6 +123,9 @@ class ForgeIteratorScript(scripts.Script):
 
     def process_batch(self, p, enabled, folder, quantity, shuffle, **kwargs):
         if not enabled or not folder or not hasattr(p, 'forge_iterator_checkpoints'):
+            return
+            
+        if getattr(shared.state, 'interrupted', False) or getattr(shared.state, 'stopping_generation', False):
             return
             
         if not hasattr(p, 'forge_iterator_current_index'):
