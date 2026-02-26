@@ -179,6 +179,11 @@ class ForgeIteratorScript(scripts.Script):
         # We collect each individual image as it finishes so we can return them all to the UI at the end
         if hasattr(p, 'forge_iterator_all_images'):
             p.forge_iterator_all_images.append(pp.image)
+            
+        # The user noted that the Live Preview frame doesn't show the final 100% VAE-decoded image
+        # because the loop moves straight into the next batch. We force the live preview to display the
+        # completed image by assigning it explicitly to the shared state.
+        shared.state.assign_current_image(pp.image)
 
     def postprocess(self, p, processed, *args):
         # By default, when do_not_save_grid is True and n_iter is large, the WebUI 
