@@ -109,10 +109,6 @@ class ForgeIteratorScript(scripts.Script):
         # Disable grid generation so we only get individual files per checkpoint iteration
         p.do_not_save_grid = True
         
-        # We need to collect generated images across batches to return them to the UI
-        p.forge_iterator_all_images = []
-        p.forge_iterator_all_infotexts = []
-        
         # Set the first model in the overrides so generation starts correctly natively
         first_ckpt = checkpoints_to_run[0]
         p.override_settings['sd_model_checkpoint'] = first_ckpt.title
@@ -198,28 +194,13 @@ class ForgeIteratorScript(scripts.Script):
             shared.opts.data['sd_model_checkpoint'] = target_ckpt.title
 
     def postprocess_image(self, p, pp, *args):
-        # We collect each individual image as it finishes so we can return them all to the UI at the end
-        if hasattr(p, 'forge_iterator_all_images'):
-            p.forge_iterator_all_images.append(pp.image)
-            
         # The user noted that the Live Preview frame doesn't show the final 100% VAE-decoded image
         # because the loop moves straight into the next batch. We force the live preview to display the
         # completed image by assigning it explicitly to the shared state.
-        shared.state.assign_current_image(pp.image)
+        if hasattr(shared.state, 'assign_current_image'):
+            shared.state.assign_current_image(pp.image)
 
     def postprocess(self, p, processed, *args):
-        # By default, when do_not_save_grid is True and n_iter is large, the WebUI 
-        # sometimes fails to return the full list of generated images to the gallery preview.
-        # We force the collected images into the processed object to ensure they display.
-        if hasattr(p, 'forge_iterator_all_images') and p.forge_iterator_all_images:
-            # We replace the processed images with our accumulated list
-            if len(processed.images) < len(p.forge_iterator_all_images):
-                processed.images = p.forge_iterator_all_images
-                
-                # Also need to extend infotexts to match the length of images so the UI doesn't crash reading metadata
-                if len(processed.infotexts) < len(processed.images):
-                    padding = [processed.infotexts[0] if processed.infotexts else ""] * (len(processed.images) - len(processed.infotexts))
-                    processed.infotexts.extend(padding)
-                
-                # Ensure the UI gallery index starts at 0 since there is no Grid at index 0
-                processed.index_of_first_image = 0
+        # Ensure the UI gallery index starts at 0 since there is no Grid at index 0
+        if p.do_not_save_grid:
+            processed.index_of_first_image = 0
