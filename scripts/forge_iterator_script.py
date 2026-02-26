@@ -154,8 +154,16 @@ class ForgeIteratorScript(scripts.Script):
                     p.sd_model = shared.sd_model
                 except Exception as fallback_e:
                     print(f"[Forge Iterator] Critical Error: Failed to restore fallback model: {fallback_e}")
-                    # If this fails, the generation will likely crash, but we tried.
                     pass
+                
+                # To ensure we MOVE ON and don't duplicate generations, we must completely remove the broken target target_ckpt
+                # from our list so the next batch calculation shifts to the *next* healthy model.
+                print(f"[Forge Iterator] Removing corrupted model {target_ckpt.name} from rotation.")
+                p.forge_iterator_checkpoints.remove(target_ckpt)
+                
+                # We must also decrease p.n_iter (total batches) natively so the loop doesn't spin empty cycles at the end
+                p.n_iter -= qty_per_ckpt
+                shared.state.job_count = p.n_iter 
                 
                 # Important: Do not update overriding settings with the target_ckpt if it failed
                 return
