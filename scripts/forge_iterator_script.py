@@ -141,6 +141,24 @@ class ForgeIteratorScript(scripts.Script):
                 p.sd_model = shared.sd_model
             except Exception as e:
                 print(f"[Forge Iterator] Error swapping models: {e}")
+                print(f"[Forge Iterator] Falling back to previous model: {current_ckpt_info.name}")
+                
+                # If Forge model reloading completely failed, shared.sd_model might be None
+                # We need to attempt to reload the previous model to save the generation loop
+                try:
+                    if hasattr(modules.sd_models, 'reload_model_weights'):
+                        modules.sd_models.reload_model_weights(shared.sd_model, current_ckpt_info)
+                    else:
+                        modules.sd_models.model_data.forge_loading_parameters = dict(checkpoint_info=current_ckpt_info)
+                        modules.sd_models.forge_model_reload()
+                    p.sd_model = shared.sd_model
+                except Exception as fallback_e:
+                    print(f"[Forge Iterator] Critical Error: Failed to restore fallback model: {fallback_e}")
+                    # If this fails, the generation will likely crash, but we tried.
+                    pass
+                
+                # Important: Do not update overriding settings with the target_ckpt if it failed
+                return
             
             # Ensure the overriding settings have the newly swapped title so Infotext saves correctly
             p.override_settings['sd_model_checkpoint'] = target_ckpt.title
