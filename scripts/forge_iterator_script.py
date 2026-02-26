@@ -72,7 +72,19 @@ class ForgeIteratorScript(scripts.Script):
         matches.sort(key=lambda x: x.name)
         return matches
 
-    def process(self, p, enabled, folder, quantity):
+    def setup(self, p, enabled, folder, quantity, **kwargs):
+        if not enabled or not folder:
+            return
+            
+        checkpoints_to_run = self._get_checkpoints_in_folder(folder)
+        if not checkpoints_to_run:
+            return
+            
+        # We perform n_iter inflation in setup() because it runs BEFORE Main Scripts (e.g. One Button Prompt).
+        # This allows Prompt-Generating Main Scripts to correctly calculate how many dynamic prompts they need to make.
+        p.n_iter = int(quantity) * len(checkpoints_to_run)
+
+    def process(self, p, enabled, folder, quantity, **kwargs):
         if not enabled or not folder:
             return
             
@@ -87,11 +99,7 @@ class ForgeIteratorScript(scripts.Script):
         p.forge_iterator_checkpoints = checkpoints_to_run
         p.forge_iterator_quantity = int(quantity)
         
-        # Calculate total iterations
-        # If user asked for n_iter=2 in the main UI, and we have 3 checkpoints and quantity=1
-        # Should we respect n_iter?
-        # Set the total number of iterations
-        p.n_iter = p.forge_iterator_quantity * len(checkpoints_to_run)
+        # Set the total number of iterations has been moved to setup() so Main Scripts see it early
         
         # Disable grid generation so we only get individual files per checkpoint iteration
         p.do_not_save_grid = True
