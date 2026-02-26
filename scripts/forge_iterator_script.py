@@ -90,9 +90,11 @@ class ForgeIteratorScript(scripts.Script):
         # Calculate total iterations
         # If user asked for n_iter=2 in the main UI, and we have 3 checkpoints and quantity=1
         # Should we respect n_iter?
-        # A1111's default n_iter is p.n_iter. 
-        # For simplicity, if this script is on, we override p.n_iter entirely based on our slider
+        # Set the total number of iterations
         p.n_iter = p.forge_iterator_quantity * len(checkpoints_to_run)
+        
+        # Disable grid generation so we only get individual files per checkpoint iteration
+        p.do_not_save_grid = True
         
         # Set the first model in the overrides so generation starts correctly natively
         first_ckpt = checkpoints_to_run[0]
@@ -126,8 +128,19 @@ class ForgeIteratorScript(scripts.Script):
         
         if current_ckpt_info.title != target_ckpt.title:
             print(f"[Forge Iterator] Swapping to checkpoint: {target_ckpt.name}")
-            modules.sd_models.reload_model_weights(shared.sd_model, target_ckpt)
-            p.sd_model = shared.sd_model
+            
+            try:
+                if hasattr(modules.sd_models, 'reload_model_weights'):
+                    # A1111 Reload Logic
+                    modules.sd_models.reload_model_weights(shared.sd_model, target_ckpt)
+                else:
+                    # Forge Reload Logic
+                    modules.sd_models.model_data.forge_loading_parameters = dict(checkpoint_info=target_ckpt)
+                    modules.sd_models.forge_model_reload()
+                    
+                p.sd_model = shared.sd_model
+            except Exception as e:
+                print(f"[Forge Iterator] Error swapping models: {e}")
             
             # Ensure the overriding settings have the newly swapped title so Infotext saves correctly
             p.override_settings['sd_model_checkpoint'] = target_ckpt.title
