@@ -83,6 +83,11 @@ class ForgeIteratorScript(scripts.Script):
         # We perform n_iter inflation in setup() because it runs BEFORE Main Scripts (e.g. One Button Prompt).
         # This allows Prompt-Generating Main Scripts to correctly calculate how many dynamic prompts they need to make.
         p.n_iter = int(quantity) * len(checkpoints_to_run)
+        
+        # Initialize our absolute index tracker.
+        # Main Scripts (like OBP) often set `p.n_iter = 1` and run their own `for` loops invoking `process_images` natively.
+        # This makes kwargs.get('batch_number') statically 0 forever. We track it natively here.
+        p.forge_iterator_current_index = 0
 
     def process(self, p, enabled, folder, quantity, **kwargs):
         if not enabled or not folder:
@@ -116,16 +121,20 @@ class ForgeIteratorScript(scripts.Script):
         if not enabled or not folder or not hasattr(p, 'forge_iterator_checkpoints'):
             return
             
-        batch_number = kwargs.get('batch_number', 0)
+        if not hasattr(p, 'forge_iterator_current_index'):
+            p.forge_iterator_current_index = kwargs.get('batch_number', 0)
+            
+        current_index = p.forge_iterator_current_index
+        p.forge_iterator_current_index += 1
         
         checkpoints_to_run = p.forge_iterator_checkpoints
         qty_per_ckpt = p.forge_iterator_quantity
         
         # Calculate which checkpoint we should be using
-        # e.g., batch_number=0, qty=2 -> index 0
-        # batch_number=1, qty=2 -> index 0
-        # batch_number=2, qty=2 -> index 1
-        ckpt_index = batch_number // qty_per_ckpt
+        # e.g., current_index=0, qty=2 -> index 0
+        # current_index=1, qty=2 -> index 0
+        # current_index=2, qty=2 -> index 1
+        ckpt_index = current_index // qty_per_ckpt
         
         # Safety check
         if ckpt_index >= len(checkpoints_to_run):
@@ -168,14 +177,11 @@ class ForgeIteratorScript(scripts.Script):
                     print(f"[Forge Iterator] Critical Error: Failed to restore fallback model: {fallback_e}")
                     pass
                 
-                # To ensure we MOVE ON and don't duplicate generations, we must completely remove the broken target target_ckpt
-                # from our list so the next batch calculation shifts to the *next* healthy model.
-                print(f"[Forge Iterator] Removing corrupted model {target_ckpt.name} from rotation.")
-                p.forge_iterator_checkpoints.remove(target_ckpt)
-                
-                # We must also decrease p.n_iter (total batches) natively so the loop doesn't spin empty cycles at the end
-                p.n_iter -= qty_per_ckpt
-                shared.state.job_count = p.n_iter 
+                # Instead of removing the corrupt model and breaking the array alignment, we simply replace the 
+                # broken model in the checkpoints list with the healthy fallback model. This ensures remaining 
+                # iterations of this batch and downstream scripts handle the transition seamlessly.
+                print(f"[Forge Iterator] Marking corrupted model {target_ckpt.name} as failed. Replacing with fallback in rotation.")
+                p.forge_iterator_checkpoints[ckpt_index] = current_ckpt_info
                 
                 # Important: If we fell back successfully, update the override_settings to the healthy model!
                 # If we don't do this, downstream features like Hires Fix will accidentally try to load the corrupt model again.
