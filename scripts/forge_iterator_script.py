@@ -177,11 +177,19 @@ class ForgeIteratorScript(scripts.Script):
                 p.n_iter -= qty_per_ckpt
                 shared.state.job_count = p.n_iter 
                 
-                # Important: Do not update overriding settings with the target_ckpt if it failed
+                # Important: If we fell back successfully, update the override_settings to the healthy model!
+                # If we don't do this, downstream features like Hires Fix will accidentally try to load the corrupt model again.
+                if hasattr(p, 'sd_model') and p.sd_model and hasattr(p.sd_model, 'sd_checkpoint_info'):
+                    fallback_title = p.sd_model.sd_checkpoint_info.title
+                    p.override_settings['sd_model_checkpoint'] = fallback_title
+                    shared.opts.data['sd_model_checkpoint'] = fallback_title
                 return
             
             # Ensure the overriding settings have the newly swapped title so Infotext saves correctly
             p.override_settings['sd_model_checkpoint'] = target_ckpt.title
+            
+            # Also update shared.opts data immediately because `set_config` relies on it mid-generation (Hires Fix, etc.)
+            shared.opts.data['sd_model_checkpoint'] = target_ckpt.title
 
     def postprocess_image(self, p, pp, *args):
         # We collect each individual image as it finishes so we can return them all to the UI at the end
