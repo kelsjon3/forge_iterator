@@ -196,6 +196,10 @@ class ForgeIteratorScript(scripts.Script):
                     fallback_title = p.sd_model.sd_checkpoint_info.title
                     p.override_settings['sd_model_checkpoint'] = fallback_title
                     shared.opts.data['sd_model_checkpoint'] = fallback_title
+                    
+                    # Ensure Infotext explicitly reports the fallback model
+                    p.sd_model_name = p.sd_model.sd_checkpoint_info.name_for_extra
+                    p.sd_model_hash = getattr(p.sd_model, 'sd_model_hash', p.sd_model.sd_checkpoint_info.hash)
                 return
             
             # Ensure the overriding settings have the newly swapped title so Infotext saves correctly
