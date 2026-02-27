@@ -203,6 +203,13 @@ class ForgeIteratorScript(scripts.Script):
             
             # Also update shared.opts data immediately because `set_config` relies on it mid-generation (Hires Fix, etc.)
             shared.opts.data['sd_model_checkpoint'] = target_ckpt.title
+            
+        # The WebUI natively captures `p.sd_model_name` and `p.sd_model_hash` right before 
+        # evaluating loops and `process_batch()`. Since we hot-swap models mid-loop, we have 
+        # to explicitly modify these `p` variables so that the Infotext metadata writes correctly.
+        if hasattr(shared, 'sd_model') and shared.sd_model and hasattr(shared.sd_model, 'sd_checkpoint_info'):
+            p.sd_model_name = shared.sd_model.sd_checkpoint_info.name_for_extra
+            p.sd_model_hash = getattr(shared.sd_model, 'sd_model_hash', shared.sd_model.sd_checkpoint_info.hash)
 
     def postprocess_image(self, p, pp, *args):
         # The user noted that the Live Preview frame doesn't show the final 100% VAE-decoded image
