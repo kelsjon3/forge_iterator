@@ -86,7 +86,7 @@ class ForgeIteratorScript(scripts.Script):
                 ckpt_refresh_btn = ToolButton(value="↻", variant="tool", elem_id="forge_iterator_refresh_ckpt")
                 current_ckpt_text = gr.Markdown(value=get_current_ckpt_label(), scale=1)
 
-            quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
+            quantity = gr.Slider(label="Images per Checkpoint", minimum=1, maximum=100, step=1, value=1)
 
             def refresh_current_ckpt():
                 return gr.Markdown.update(value=get_current_ckpt_label())
