@@ -44,10 +44,18 @@ class ForgeIteratorScript(scripts.Script):
             with gr.Row():
                 enabled = gr.Checkbox(label="Enable Forge Iterator", value=False, scale=0)
 
-            # Checkpoint subfolder selector with Shuffle placed directly to its right
+            # Spacer row between enable toggle and subfolder controls
             with gr.Row():
-                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=1)
-                shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False, scale=0)
+                gr.Markdown("")
+
+            # Checkpoint subfolder label with Shuffle control placed to its right
+            with gr.Row():
+                _subfolder_label = gr.Markdown("Checkpoint Subfolder")
+                shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=0)
+
+            # Compact subfolder dropdown beneath the label/Shuffle row
+            with gr.Row():
+                folder = gr.Dropdown(label="", choices=choices, value="", scale=0)
 
             # Display currently loaded checkpoint with a manual refresh button
             def get_current_ckpt_label():
