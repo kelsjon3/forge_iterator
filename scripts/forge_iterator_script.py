@@ -51,12 +51,29 @@ class ForgeIteratorScript(scripts.Script):
 
             # Display currently loaded checkpoint with a manual refresh button
             def get_current_ckpt_label():
+                # 1) Prefer the fully loaded model, if present
                 sd_model = getattr(shared, "sd_model", None)
                 ckpt_info = getattr(sd_model, "sd_checkpoint_info", None) if sd_model else None
-                if not ckpt_info:
-                    return "Current checkpoint: (none)"
-                name = getattr(ckpt_info, "name_for_extra", None) or getattr(ckpt_info, "title", None) or getattr(ckpt_info, "name", None)
-                return f"Current checkpoint: {name}"
+                if ckpt_info:
+                    name = getattr(ckpt_info, "name_for_extra", None) or getattr(ckpt_info, "title", None) or getattr(ckpt_info, "name", None)
+                    return f"Current checkpoint: {name}"
+
+                # 2) If a model is in the process of being loaded (Forge async/queued load),
+                #    fall back to the pending forge_loading_parameters entry.
+                model_data = getattr(modules.sd_models, "model_data", None)
+                forge_params = getattr(model_data, "forge_loading_parameters", None) if model_data else None
+                loading_info = forge_params.get("checkpoint_info") if isinstance(forge_params, dict) else None
+                if loading_info:
+                    name = getattr(loading_info, "name_for_extra", None) or getattr(loading_info, "title", None) or getattr(loading_info, "name", None)
+                    return f"Loading checkpoint: {name}"
+
+                # 3) As a last resort, show the currently selected checkpoint option string
+                opts = getattr(shared, "opts", None)
+                opt_title = getattr(opts, "data", {}).get("sd_model_checkpoint") if opts else None
+                if opt_title:
+                    return f"Selected checkpoint: {opt_title}"
+
+                return "Current checkpoint: (none)"
 
             with gr.Row():
                 current_ckpt_text = gr.Markdown(value=get_current_ckpt_label())
