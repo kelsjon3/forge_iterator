@@ -3,6 +3,7 @@ import modules.scripts as scripts
 import modules.shared as shared
 from modules.processing import process_images
 from modules.sd_models import checkpoints_list
+from modules.ui_components import ToolButton
 import modules.sd_models
 import random
 
@@ -45,17 +46,12 @@ class ForgeIteratorScript(scripts.Script):
                 enabled = gr.Checkbox(label="Enable Forge Iterator", value=False, scale=0)
 
             # Spacer row between enable toggle and subfolder controls
-            with gr.Row():
-                gr.Markdown("")
+            gr.HTML("<br>")
 
-            # Checkpoint subfolder label with Shuffle control placed to its right
+            # Checkpoint subfolder dropdown and Shuffle control placed to its immediate right
             with gr.Row():
-                _subfolder_label = gr.Markdown("Checkpoint Subfolder")
-                shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=0)
-
-            # Compact subfolder dropdown beneath the label/Shuffle row
-            with gr.Row():
-                folder = gr.Dropdown(label="", choices=choices, value="", scale=0)
+                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=0, min_width=240)
+                shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=1, min_width=300)
 
             # Display currently loaded checkpoint with a manual refresh button
             def get_current_ckpt_label():
@@ -84,7 +80,7 @@ class ForgeIteratorScript(scripts.Script):
                 return "Current checkpoint: (none)"
 
             with gr.Row():
-                ckpt_refresh_btn = gr.Button(value="↻", size="sm", elem_classes="tool", scale=0)
+                ckpt_refresh_btn = ToolButton(value="↻", elem_id="forge_iterator_refresh_ckpt")
                 current_ckpt_text = gr.Markdown(value=get_current_ckpt_label(), scale=1)
 
             quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
