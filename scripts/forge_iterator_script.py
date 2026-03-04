@@ -42,13 +42,26 @@ class ForgeIteratorScript(scripts.Script):
         
         with gr.Accordion("Forge Iterator", open=False):
             enabled = gr.Checkbox(label="Enable Forge Iterator", value=False)
-            
+
             # Use a refresh button to rescan folders if models are reloaded
             with gr.Row():
                 folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=1)
                 shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False)
                 refresh_btn = gr.Button(value="🔄", size="sm", elem_classes="tool")
-                
+
+            # Display currently loaded checkpoint with a manual refresh button
+            def get_current_ckpt_label():
+                sd_model = getattr(shared, "sd_model", None)
+                ckpt_info = getattr(sd_model, "sd_checkpoint_info", None) if sd_model else None
+                if not ckpt_info:
+                    return "Current checkpoint: (none)"
+                name = getattr(ckpt_info, "name_for_extra", None) or getattr(ckpt_info, "title", None) or getattr(ckpt_info, "name", None)
+                return f"Current checkpoint: {name}"
+
+            with gr.Row():
+                current_ckpt_text = gr.Markdown(value=get_current_ckpt_label())
+                ckpt_refresh_btn = gr.Button(value="↻", size="sm")
+
             quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
 
             def refresh_folders():
@@ -56,8 +69,12 @@ class ForgeIteratorScript(scripts.Script):
                 # if the user pressed the main UI refresh button before, but we just read the dict
                 new_choices = self.get_subfolders()
                 return gr.Dropdown.update(choices=new_choices)
-                
+
+            def refresh_current_ckpt():
+                return gr.Markdown.update(value=get_current_ckpt_label())
+
             refresh_btn.click(fn=refresh_folders, outputs=[folder])
+            ckpt_refresh_btn.click(fn=refresh_current_ckpt, outputs=[current_ckpt_text])
 
         return [enabled, folder, quantity, shuffle_checkbox]
 
