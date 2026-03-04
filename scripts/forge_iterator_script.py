@@ -43,12 +43,11 @@ class ForgeIteratorScript(scripts.Script):
         with gr.Accordion("Forge Iterator", open=False):
             with gr.Row():
                 enabled = gr.Checkbox(label="Enable Forge Iterator", value=False, scale=0)
-                shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False, scale=0)
 
-            # Use a refresh button to rescan folders if models are reloaded
+            # Checkpoint subfolder selector with Shuffle placed directly to its right
             with gr.Row():
-                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=0)
-                refresh_btn = gr.Button(value="🔄", size="sm", elem_classes="tool", scale=0)
+                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=1)
+                shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False, scale=0)
 
             # Display currently loaded checkpoint with a manual refresh button
             def get_current_ckpt_label():
@@ -82,16 +81,9 @@ class ForgeIteratorScript(scripts.Script):
 
             quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
 
-            def refresh_folders():
-                # Modules.sd_models.list_models() updates the checkpoints_list under the hood 
-                # if the user pressed the main UI refresh button before, but we just read the dict
-                new_choices = self.get_subfolders()
-                return gr.Dropdown.update(choices=new_choices)
-
             def refresh_current_ckpt():
                 return gr.Markdown.update(value=get_current_ckpt_label())
 
-            refresh_btn.click(fn=refresh_folders, outputs=[folder])
             ckpt_refresh_btn.click(fn=refresh_current_ckpt, outputs=[current_ckpt_text])
 
         return [enabled, folder, quantity, shuffle_checkbox]
