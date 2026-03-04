@@ -41,12 +41,13 @@ class ForgeIteratorScript(scripts.Script):
         choices = self.get_subfolders()
         
         with gr.Accordion("Forge Iterator", open=False):
-            enabled = gr.Checkbox(label="Enable Forge Iterator", value=False)
+            with gr.Row():
+                enabled = gr.Checkbox(label="Enable Forge Iterator", value=False)
+                shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False)
 
             # Use a refresh button to rescan folders if models are reloaded
             with gr.Row():
                 folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=1)
-                shuffle_checkbox = gr.Checkbox(label="Shuffle", value=False)
                 refresh_btn = gr.Button(value="🔄", size="sm", elem_classes="tool")
 
             # Display currently loaded checkpoint with a manual refresh button
@@ -77,7 +78,7 @@ class ForgeIteratorScript(scripts.Script):
 
             with gr.Row():
                 current_ckpt_text = gr.Markdown(value=get_current_ckpt_label())
-                ckpt_refresh_btn = gr.Button(value="↻", size="sm")
+                ckpt_refresh_btn = gr.Button(value="↻", size="sm", elem_classes="tool")
 
             quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
 
