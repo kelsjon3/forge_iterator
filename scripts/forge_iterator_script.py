@@ -48,9 +48,11 @@ class ForgeIteratorScript(scripts.Script):
             # Spacer row between enable toggle and subfolder controls
             gr.HTML("<br>")
 
-            # Checkpoint subfolder dropdown and Shuffle control placed to its immediate right
-            with gr.Row():
-                folder = gr.Dropdown(label="Checkpoint Subfolder", choices=choices, value="", scale=0, min_width=240)
+            # Checkpoint subfolder label separate from the field so the checkbox aligns perfectly
+            gr.HTML("<div style='margin-bottom: 0px;'>Checkpoint Subfolder</div>")
+            
+            with gr.Row(equal_height=True):
+                folder = gr.Dropdown(show_label=False, choices=choices, value="", scale=0, min_width=240, container=False)
                 shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=1, min_width=300)
 
             # Display currently loaded checkpoint with a manual refresh button
@@ -79,8 +81,9 @@ class ForgeIteratorScript(scripts.Script):
 
                 return "Current checkpoint: (none)"
 
-            with gr.Row():
-                ckpt_refresh_btn = ToolButton(value="↻", elem_id="forge_iterator_refresh_ckpt")
+            with gr.Row(equal_height=True):
+                # variant="tool" removes the standard background box/frame in modern Gradio
+                ckpt_refresh_btn = ToolButton(value="↻", variant="tool", elem_id="forge_iterator_refresh_ckpt")
                 current_ckpt_text = gr.Markdown(value=get_current_ckpt_label(), scale=1)
 
             quantity = gr.Slider(label="Iterations (Batches) per Checkpoint", minimum=1, maximum=100, step=1, value=1)
