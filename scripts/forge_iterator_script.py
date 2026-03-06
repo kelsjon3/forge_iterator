@@ -58,43 +58,7 @@ class ForgeIteratorScript(scripts.Script):
                 folder = gr.Dropdown(show_label=False, choices=choices, value="", scale=0, min_width=240, container=False)
                 shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=1, min_width=300)
 
-            # Display currently loaded checkpoint with a manual refresh button
-            def get_current_ckpt_label():
-                # 1) Prefer the fully loaded model, if present
-                sd_model = getattr(shared, "sd_model", None)
-                ckpt_info = getattr(sd_model, "sd_checkpoint_info", None) if sd_model else None
-                if ckpt_info:
-                    name = getattr(ckpt_info, "name_for_extra", None) or getattr(ckpt_info, "title", None) or getattr(ckpt_info, "name", None)
-                    return f"Current checkpoint: {name}"
-
-                # 2) If a model is in the process of being loaded (Forge async/queued load),
-                #    fall back to the pending forge_loading_parameters entry.
-                model_data = getattr(modules.sd_models, "model_data", None)
-                forge_params = getattr(model_data, "forge_loading_parameters", None) if model_data else None
-                loading_info = forge_params.get("checkpoint_info") if isinstance(forge_params, dict) else None
-                if loading_info:
-                    name = getattr(loading_info, "name_for_extra", None) or getattr(loading_info, "title", None) or getattr(loading_info, "name", None)
-                    return f"Loading checkpoint: {name}"
-
-                # 3) As a last resort, show the currently selected checkpoint option string
-                opts = getattr(shared, "opts", None)
-                opt_title = getattr(opts, "data", {}).get("sd_model_checkpoint") if opts else None
-                if opt_title:
-                    return f"Selected checkpoint: {opt_title}"
-
-                return "Current checkpoint: (none)"
-
-            with gr.Row(equal_height=True):
-                # variant="tool" removes the standard background box/frame in modern Gradio
-                ckpt_refresh_btn = ToolButton(value="↻", variant="tool", elem_id="forge_iterator_refresh_ckpt")
-                current_ckpt_text = gr.Markdown(value=get_current_ckpt_label(), scale=1)
-
             quantity = gr.Slider(label="Images per Checkpoint", minimum=1, maximum=100, step=1, value=1)
-
-            def refresh_current_ckpt():
-                return gr.Markdown.update(value=get_current_ckpt_label())
-
-            ckpt_refresh_btn.click(fn=refresh_current_ckpt, outputs=[current_ckpt_text])
 
             # Collapsible section: checkpoint queue list with status indicators (same order as run queue)
             def get_queue_list_markdown(folder_val, shuffle_val):
