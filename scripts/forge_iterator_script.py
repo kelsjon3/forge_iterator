@@ -58,15 +58,18 @@ class ForgeIteratorScript(scripts.Script):
                 folder = gr.Dropdown(show_label=False, choices=choices, value="", scale=0, min_width=240, container=False)
                 shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=1, min_width=300)
 
-            quantity = gr.Number(
-                label="Images per Checkpoint",
-                minimum=1,
-                maximum=100,
-                value=1,
-                precision=0,
-                scale=0,
-                min_width=80,
-            )
+            # Compact numeric input for Images per Checkpoint (keep label, avoid full-width bar)
+            with gr.Row(equal_height=True):
+                quantity = gr.Number(
+                    label="Images per Checkpoint",
+                    minimum=1,
+                    maximum=100,
+                    value=1,
+                    precision=0,
+                    scale=0,
+                    min_width=80,
+                    container=False,
+                )
 
             # Collapsible section: checkpoint queue list with status indicators (same order as run queue)
             def get_queue_list_markdown(folder_val, shuffle_val):
@@ -97,13 +100,15 @@ class ForgeIteratorScript(scripts.Script):
                 return pending_md, completed_md
 
             with gr.Row(equal_height=True):
-                gr.Markdown("**Checkpoint queue**", scale=0)
-                queue_refresh_btn = ToolButton(
-                    value="↻",
-                    variant="tool",
-                    elem_id="forge_iterator_refresh_queue",
-                    scale=0,
-                )
+                with gr.Column(scale=0):
+                    with gr.Row(equal_height=True):
+                        gr.Markdown("**Checkpoint queue**", scale=0)
+                        queue_refresh_btn = ToolButton(
+                            value="↻",
+                            variant="tool",
+                            elem_id="forge_iterator_refresh_queue",
+                            scale=0,
+                        )
 
             with gr.Accordion("▼", open=False):
                 pending_md, completed_md = get_queue_list_markdown("", False)
