@@ -96,7 +96,7 @@ class ForgeIteratorScript(scripts.Script):
 
             ckpt_refresh_btn.click(fn=refresh_current_ckpt, outputs=[current_ckpt_text])
 
-            # Collapsible section: checkpoint queue list with status indicators
+            # Collapsible section: checkpoint queue list with status indicators (same order as run queue)
             def get_queue_list_markdown(folder_val, shuffle_val):
                 if not folder_val:
                     return "_No subfolder selected._"
@@ -106,16 +106,15 @@ class ForgeIteratorScript(scripts.Script):
                 progress = _forge_iterator_progress
                 prog_ckpts = progress.get("checkpoints", [])
                 completed_idx = progress.get("completed_index", -1)
+                # Use queue order when we have progress; otherwise alphabetical
+                order = prog_ckpts if prog_ckpts else [getattr(c, "title", None) or getattr(c, "name", None) or "Unknown" for c in checkpoints]
                 lines = []
-                for i, ckpt in enumerate(checkpoints):
-                    title = getattr(ckpt, "title", None) or getattr(ckpt, "name", None) or "Unknown"
-                    try:
-                        idx_in_progress = prog_ckpts.index(title)
-                    except ValueError:
-                        idx_in_progress = -1
-                    if idx_in_progress >= 0 and idx_in_progress <= completed_idx:
+                for i, title in enumerate(order):
+                    if not title:
+                        continue
+                    if i <= completed_idx:
                         lines.append(f"- ✓ **{title}** _(completed)_")
-                    elif idx_in_progress == completed_idx + 1:
+                    elif i == completed_idx + 1:
                         lines.append(f"- ◐ **{title}** _(in progress)_")
                     else:
                         lines.append(f"- ○ **{title}** _(pending)_")
