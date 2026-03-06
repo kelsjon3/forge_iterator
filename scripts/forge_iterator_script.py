@@ -7,6 +7,9 @@ from modules.ui_components import ToolButton
 import modules.sd_models
 import random
 
+# Module-level progress tracking for the checkpoint queue (accessible from UI refresh)
+_forge_iterator_progress = {"checkpoints": [], "completed_index": -1}
+
 class ForgeIteratorScript(scripts.Script):
     def title(self):
         return "Forge Iterator"
@@ -93,6 +96,47 @@ class ForgeIteratorScript(scripts.Script):
 
             ckpt_refresh_btn.click(fn=refresh_current_ckpt, outputs=[current_ckpt_text])
 
+            # Collapsible section: checkpoint queue list with status indicators
+            def get_queue_list_markdown(folder_val, shuffle_val):
+                if not folder_val:
+                    return "_No subfolder selected._"
+                checkpoints = self._get_checkpoints_in_folder(folder_val)
+                if not checkpoints:
+                    return "_No checkpoints found in this subfolder._"
+                progress = _forge_iterator_progress
+                prog_ckpts = progress.get("checkpoints", [])
+                completed_idx = progress.get("completed_index", -1)
+                lines = []
+                for i, ckpt in enumerate(checkpoints):
+                    title = getattr(ckpt, "title", None) or getattr(ckpt, "name", None) or "Unknown"
+                    try:
+                        idx_in_progress = prog_ckpts.index(title)
+                    except ValueError:
+                        idx_in_progress = -1
+                    if idx_in_progress >= 0 and idx_in_progress <= completed_idx:
+                        lines.append(f"- ✓ **{title}** _(completed)_")
+                    elif idx_in_progress == completed_idx + 1:
+                        lines.append(f"- ◐ **{title}** _(in progress)_")
+                    else:
+                        lines.append(f"- ○ **{title}** _(pending)_")
+                return "\n".join(lines) if lines else "_No checkpoints._"
+
+            with gr.Accordion("Checkpoint queue", open=False):
+                with gr.Row(equal_height=True):
+                    queue_refresh_btn = ToolButton(value="↻", variant="tool", elem_id="forge_iterator_refresh_queue")
+                    queue_list_text = gr.Markdown(value=get_queue_list_markdown("", False), scale=1)
+
+            def refresh_queue_list(folder_val, shuffle_val):
+                return gr.Markdown.update(value=get_queue_list_markdown(folder_val, shuffle_val))
+
+            queue_refresh_btn.click(
+                fn=refresh_queue_list,
+                inputs=[folder, shuffle_checkbox],
+                outputs=[queue_list_text],
+            )
+            folder.change(fn=refresh_queue_list, inputs=[folder, shuffle_checkbox], outputs=[queue_list_text])
+            shuffle_checkbox.change(fn=refresh_queue_list, inputs=[folder, shuffle_checkbox], outputs=[queue_list_text])
+
         return [enabled, folder, quantity, shuffle_checkbox]
 
     def _get_checkpoints_in_folder(self, folder):
@@ -155,6 +199,13 @@ class ForgeIteratorScript(scripts.Script):
         first_ckpt = checkpoints_to_run[0]
         p.override_settings['sd_model_checkpoint'] = first_ckpt.title
 
+        # Update progress state for UI queue list
+        global _forge_iterator_progress
+        _forge_iterator_progress = {
+            "checkpoints": [c.title for c in checkpoints_to_run],
+            "completed_index": -1,
+        }
+
     def process_batch(self, p, enabled, folder, quantity, shuffle, **kwargs):
         if not enabled or not folder or not hasattr(p, 'forge_iterator_checkpoints'):
             return
@@ -180,6 +231,14 @@ class ForgeIteratorScript(scripts.Script):
         # Safety check
         if ckpt_index >= len(checkpoints_to_run):
             return
+
+        # Update progress for UI queue list (completed_index = last fully completed checkpoint)
+        global _forge_iterator_progress
+        completed_index = current_index // p.forge_iterator_quantity - 1
+        _forge_iterator_progress = {
+            "checkpoints": [c.title for c in checkpoints_to_run],
+            "completed_index": completed_index,
+        }
             
         target_ckpt = checkpoints_to_run[ckpt_index]
         
