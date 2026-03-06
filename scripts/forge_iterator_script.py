@@ -51,25 +51,33 @@ class ForgeIteratorScript(scripts.Script):
             # Spacer row between enable toggle and subfolder controls
             gr.HTML("<br>")
 
-            # Checkpoint subfolder label separate from the field so the checkbox aligns perfectly
-            gr.HTML("<div style='margin-bottom: 0px;'>Checkpoint Subfolder</div>")
-            
             with gr.Row(equal_height=True):
-                folder = gr.Dropdown(show_label=False, choices=choices, value="", scale=0, min_width=240, container=False)
-                shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=1, min_width=300)
+                with gr.Column(scale=0, min_width=240):
+                    gr.HTML("<div style='margin-bottom: 0px;'>Checkpoint Subfolder</div>")
+                    folder = gr.Dropdown(show_label=False, choices=choices, value="", scale=0, min_width=240, container=False)
+                
+                with gr.Column(scale=0, min_width=30): # Spacer to prevent checkbox from touching dropdown
+                    gr.HTML("")
+                
+                with gr.Column(scale=0, min_width=220):
+                    gr.HTML("<div style='margin-bottom: 0px; color: transparent;'>&nbsp;</div>")
+                    shuffle_checkbox = gr.Checkbox(label="Shuffle subfolder contents", value=False, scale=0, min_width=200)
 
-            # Compact numeric input for Images per Checkpoint (keep label, avoid full-width bar)
-            with gr.Row(equal_height=True):
-                quantity = gr.Number(
-                    label="Images per Checkpoint",
-                    minimum=1,
-                    maximum=100,
-                    value=1,
-                    precision=0,
-                    scale=0,
-                    min_width=80,
-                    container=False,
-                )
+                with gr.Column(scale=0, min_width=180):
+                    gr.HTML("<div style='margin-bottom: 0px;'>Images per Checkpoint</div>")
+                    quantity = gr.Number(
+                        show_label=False,
+                        minimum=1,
+                        maximum=100,
+                        value=1,
+                        precision=0,
+                        scale=0,
+                        min_width=80,
+                    )
+                with gr.Column(scale=1): # The spacer
+                    gr.HTML("")
+
+            gr.HTML("<br>")
 
             # Collapsible section: checkpoint queue list with status indicators (same order as run queue)
             def get_queue_list_markdown(folder_val, shuffle_val):
@@ -99,16 +107,17 @@ class ForgeIteratorScript(scripts.Script):
                 completed_md = "\n".join(completed_lines) if completed_lines else "_None_"
                 return pending_md, completed_md
 
-            with gr.Row(equal_height=True):
-                with gr.Column(scale=0):
-                    with gr.Row(equal_height=True):
-                        gr.Markdown("**Checkpoint queue**", scale=0)
-                        queue_refresh_btn = ToolButton(
-                            value="↻",
-                            variant="tool",
-                            elem_id="forge_iterator_refresh_queue",
-                            scale=0,
-                        )
+            with gr.Row(variant="compact"):
+                with gr.Column(scale=0, min_width=115):
+                    gr.HTML("<div style='font-weight: bold; margin-top: 0.4em; white-space: nowrap;'>Checkpoint queue</div>")
+                with gr.Column(scale=0, min_width=32):
+                    queue_refresh_btn = ToolButton(
+                        value="↻",
+                        variant="tool",
+                        elem_id="forge_iterator_refresh_queue",
+                    )
+                with gr.Column(scale=1):
+                    gr.HTML("") # push to left
 
             with gr.Accordion("▼", open=False):
                 pending_md, completed_md = get_queue_list_markdown("", False)
