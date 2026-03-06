@@ -98,43 +98,57 @@ class ForgeIteratorScript(scripts.Script):
 
             # Collapsible section: checkpoint queue list with status indicators (same order as run queue)
             def get_queue_list_markdown(folder_val, shuffle_val):
+                empty = "_No subfolder selected._", "_"
                 if not folder_val:
-                    return "_No subfolder selected._"
+                    return empty
                 checkpoints = self._get_checkpoints_in_folder(folder_val)
                 if not checkpoints:
-                    return "_No checkpoints found in this subfolder._"
+                    return "_No checkpoints found in this subfolder._", "_"
                 progress = _forge_iterator_progress
                 prog_ckpts = progress.get("checkpoints", [])
                 completed_idx = progress.get("completed_index", -1)
                 # Use queue order when we have progress; otherwise alphabetical
                 order = prog_ckpts if prog_ckpts else [getattr(c, "title", None) or getattr(c, "name", None) or "Unknown" for c in checkpoints]
-                lines = []
+                pending_lines = []
+                completed_lines = []
                 for i, title in enumerate(order):
                     if not title:
                         continue
                     if i <= completed_idx:
-                        lines.append(f"- ✓ **{title}** _(completed)_")
+                        completed_lines.append(f"- ✓ **{title}**")
                     elif i == completed_idx + 1:
-                        lines.append(f"- ◐ **{title}** _(in progress)_")
+                        pending_lines.append(f"- ◐ **{title}** _(in progress)_")
                     else:
-                        lines.append(f"- ○ **{title}** _(pending)_")
-                return "\n".join(lines) if lines else "_No checkpoints._"
+                        pending_lines.append(f"- ○ **{title}** _(pending)_")
+                pending_md = "\n".join(pending_lines) if pending_lines else "_None_"
+                completed_md = "\n".join(completed_lines) if completed_lines else "_None_"
+                return pending_md, completed_md
 
-            with gr.Accordion("Checkpoint queue", open=False):
-                with gr.Row(equal_height=True):
-                    queue_refresh_btn = ToolButton(value="↻", variant="tool", elem_id="forge_iterator_refresh_queue")
-                    queue_list_text = gr.Markdown(value=get_queue_list_markdown("", False), scale=1)
+            with gr.Row(equal_height=True):
+                gr.Markdown("**Checkpoint queue**", scale=1)
+                queue_refresh_btn = ToolButton(value="↻", variant="tool", elem_id="forge_iterator_refresh_queue")
+
+            with gr.Accordion("▼", open=False):
+                pending_md, completed_md = get_queue_list_markdown("", False)
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        gr.Markdown("**Pending / In progress**")
+                        queue_pending_text = gr.Markdown(value=pending_md)
+                    with gr.Column(scale=1):
+                        gr.Markdown("**Completed**")
+                        queue_completed_text = gr.Markdown(value=completed_md)
 
             def refresh_queue_list(folder_val, shuffle_val):
-                return gr.Markdown.update(value=get_queue_list_markdown(folder_val, shuffle_val))
+                p, c = get_queue_list_markdown(folder_val, shuffle_val)
+                return gr.Markdown.update(value=p), gr.Markdown.update(value=c)
 
             queue_refresh_btn.click(
                 fn=refresh_queue_list,
                 inputs=[folder, shuffle_checkbox],
-                outputs=[queue_list_text],
+                outputs=[queue_pending_text, queue_completed_text],
             )
-            folder.change(fn=refresh_queue_list, inputs=[folder, shuffle_checkbox], outputs=[queue_list_text])
-            shuffle_checkbox.change(fn=refresh_queue_list, inputs=[folder, shuffle_checkbox], outputs=[queue_list_text])
+            folder.change(fn=refresh_queue_list, inputs=[folder, shuffle_checkbox], outputs=[queue_pending_text, queue_completed_text])
+            shuffle_checkbox.change(fn=refresh_queue_list, inputs=[folder, shuffle_checkbox], outputs=[queue_pending_text, queue_completed_text])
 
         return [enabled, folder, quantity, shuffle_checkbox]
 
